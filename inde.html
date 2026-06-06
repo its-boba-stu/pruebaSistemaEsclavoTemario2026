@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Baymax</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --green-disp: #27ae60;
+            --brown-disp: #8e44ad; /* Color visual sustituto */
+            --red-disp: #c0392b;
+            --purple-disp: #9b59b6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 15px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .full-width { grid-column: 1 / -1; }
+
+        h2 { margin-top: 0; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; font-size: 1.2rem;}
+
+        .grid-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            background-color: #ecf0f1;
+            color: var(--primary);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button:hover { filter: brightness(0.9); transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-primary { background-color: var(--accent); color: white; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-success { background-color: var(--success); color: white; }
+        
+        .c-green { background-color: var(--green-disp); color: white;}
+        .c-brown { background-color: #a0522d; color: white;}
+        .c-red { background-color: var(--red-disp); color: white;}
+        .c-purple { background-color: var(--purple-disp); color: white;}
+
+        .console {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        .status-box {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            background-color: #ecf0f1;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🤖 Panel de Control</h1>
+        <button id="btnConnect" class="btn-primary">🔌 Conectar ESP32 (USB)</button>
+    </header>
+
+    <div class="container">
+        <div class="card" id="section1">
+            <h2>⚙️ 1. Acciones Individuales</h2>
+            
+            <p><strong>Brazos</strong></p>
+            <div class="grid-buttons">
+                <button onclick="sendCmd('ARM_L_UP')">Brazo Izq: Arriba</button>
+                <button onclick="sendCmd('ARM_L_DN')">Brazo Izq: Abajo</button>
+                <button onclick="sendCmd('ARM_R_UP')">Brazo Der: Arriba</button>
+                <button onclick="sendCmd('ARM_R_DN')">Brazo Der: Abajo</button>
+            </div>
+
+            <p><strong>Dispensadores (Prueba 1 Vuelta)</strong></p>
+            <div class="grid-buttons">
+                <button class="c-green" onclick="sendCmd('DISP_TEST_V')">Verde</button>
+                <button class="c-brown" onclick="sendCmd('DISP_TEST_M')">Marrón</button>
+                <button class="c-red" onclick="sendCmd('DISP_TEST_R')">Rojo</button>
+                <button class="c-purple" onclick="sendCmd('DISP_TEST_P')">Morado</button>
+            </div>
+
+            <p><strong>Movimiento (Drivers)</strong></p>
+            <div class="grid-buttons">
+                <button onclick="sendCmd('MOT_F')">⬆️ Adelante</button>
+                <button onclick="sendCmd('MOT_B')">⬇️ Atrás</button>
+                <button onclick="sendCmd('MOT_S')" class="btn-danger">🛑 Detener</button>
+            </div>
+
+            <p><strong>Sensor Ultrasónico</strong></p>
+            <div class="grid-buttons">
+                <button id="btnSensorTest" class="btn-primary" onclick="toggleSensor()">Activar Prueba Sensor</button>
+            </div>
+            <div id="sensorStatus" class="status-box">Sensor Apagado</div>
+        </div>
+
+        <div class="card" id="section2">
+            <h2>💊 2. Prueba de Sistema (Dispensador)</h2>
+            <p>Inicia el flujo completo. Bloqueará el Apartado 1 hasta finalizar.</p>
+            
+            <div class="grid-buttons">
+                <button class="c-green sys-btn" onclick="startSystem('V')">Iniciar Verde</button>
+                <button class="c-brown sys-btn" onclick="startSystem('M')">Iniciar Marrón</button>
+                <button class="c-red sys-btn" onclick="startSystem('R')">Iniciar Rojo</button>
+                <button class="c-purple sys-btn" onclick="startSystem('P')">Iniciar Morado</button>
+            </div>
+
+            <div class="status-box" id="sysStatusBox" style="background-color: #fff3cd; color: #856404; display: none;">
+                Esperando detección de objeto...
+            </div>
+
+            <div class="grid-buttons" style="margin-top: 15px;">
+                <button id="btnRetry" style="display:none;" onclick="sendCmd('SYS_RETRY')">🔄 Volver a intentar</button>
+                <button id="btnReceived" class="btn-success" style="display:none;" onclick="sendCmd('SYS_RECEIVED')">✅ Recibido</button>
+                <button id="btnCancel" class="btn-danger" style="display:none;" onclick="sendCmd('SYS_STOP')">🛑 Detener Sesión</button>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2>💻 3. Consola de Eventos</h2>
+            <div class="console" id="consoleOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        let port;
+        let writer;
+        let isSensorTestOn = false;
+
+        // UI Elements
+        const consoleOut = document.getElementById('consoleOutput');
+        const section1 = document.getElementById('section1');
+        const sensorStatus = document.getElementById('sensorStatus');
+        const btnSensorTest = document.getElementById('btnSensorTest');
+        
+        const sysStatusBox = document.getElementById('sysStatusBox');
+        const btnRetry = document.getElementById('btnRetry');
+        const btnReceived = document.getElementById('btnReceived');
+        const btnCancel = document.getElementById('btnCancel');
+        const sysBtns = document.querySelectorAll('.sys-btn');
+
+        // WEB SERIAL API CONNECTION
+        document.getElementById('btnConnect').addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                writer = port.writable.getWriter();
+                logToConsole("✅ Conectado exitosamente al ESP32.");
+                document.getElementById('btnConnect').innerText = "✅ Conectado";
+                document.getElementById('btnConnect').disabled = true;
+                readLoop();
+            } catch (err) {
+                logToConsole("❌ Error de conexión: " + err);
+            }
+        });
+
+        async function sendCmd(command) {
+            if (!writer) {
+                alert("Primero conecta el ESP32.");
+                return;
+            }
+            const data = new TextEncoder().encode(command + '\n');
+            await writer.write(data);
+        }
+
+        function logToConsole(text) {
+            const time = new Date().toLocaleTimeString();
+            consoleOut.innerHTML += `[${time}] ${text}<br>`;
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+
+        // READ FROM ESP32
+        async function readLoop() {
+            const decoder = new TextDecoderStream();
+            const inputDone = port.readable.pipeTo(decoder.writable);
+            const reader = decoder.readable.getReader();
+
+            let buffer = "";
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                buffer += value;
+                let lines = buffer.split('\n');
+                buffer = lines.pop(); // Guarda el fragmento incompleto
+
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue;
+
+                    // Parsear respuestas
+                    if (line.startsWith("LOG:")) {
+                        logToConsole(line.substring(4));
+                    } 
+                    else if (line.startsWith("SENSOR_TEST:")) {
+                        let res = line.split(":")[1];
+                        if(res === "NADA") {
+                            sensorStatus.innerText = "No se ha detectado nada aún.";
+                            sensorStatus.style.backgroundColor = "#ecf0f1";
+                        } else {
+                            sensorStatus.innerText = res;
+                            sensorStatus.style.backgroundColor = "var(--success)";
+                            sensorStatus.style.color = "white";
+                        }
+                    }
+                    else if (line.startsWith("SYS_STATUS:")) {
+                        handleSysStatus(line.split(":")[1]);
+                    }
+                }
+            }
+        }
+
+        // SENSOR TOGGLE LOGIC
+        function toggleSensor() {
+            isSensorTestOn = !isSensorTestOn;
+            if (isSensorTestOn) {
+                sendCmd('SENS_ON');
+                btnSensorTest.innerText = "Detener Prueba Sensor";
+                btnSensorTest.classList.replace('btn-primary', 'btn-danger');
+                sensorStatus.innerText = "Esperando objeto...";
+            } else {
+                sendCmd('SENS_OFF');
+                btnSensorTest.innerText = "Activar Prueba Sensor";
+                btnSensorTest.classList.replace('btn-danger', 'btn-primary');
+                sensorStatus.innerText = "Sensor Apagado";
+                sensorStatus.style.backgroundColor = "#ecf0f1";
+                sensorStatus.style.color = "var(--primary)";
+            }
+        }
+
+        // SYSTEM WORKFLOW LOGIC
+        function startSystem(color) {
+            sendCmd(`SYS_START_${color}`);
+            lockUI(true);
+        }
+
+        function handleSysStatus(status) {
+            if (status === "DETECTED") {
+                sysStatusBox.innerText = "¡Objeto detectado! Preparando brazos...";
+                sysStatusBox.style.backgroundColor = "var(--success)";
+                sysStatusBox.style.color = "white";
+                btnRetry.style.display = "none";
+            } 
+            else if (status === "ARMS_UP") {
+                sysStatusBox.innerText = "Brazos arriba. Esperando confirmación.";
+                sysStatusBox.style.backgroundColor = "var(--accent)";
+                btnReceived.style.display = "block";
+            }
+            else if (status === "ENDED" || status === "STOPPED") {
+                lockUI(false);
+            }
+        }
+
+        function lockUI(isLocked) {
+            // Disable/Enable section 1
+            const section1Buttons = section1.querySelectorAll('button');
+            section1Buttons.forEach(btn => btn.disabled = isLocked);
+            if(isLocked && isSensorTestOn) toggleSensor(); // Auto turn off individual sensor test
+
+            // Setup Section 2 State
+            sysBtns.forEach(btn => btn.disabled = isLocked);
+            sysStatusBox.style.display = isLocked ? "block" : "none";
+            btnCancel.style.display = isLocked ? "block" : "none";
+            btnRetry.style.display = isLocked ? "block" : "none";
+            btnReceived.style.display = "none";
+            
+            if(isLocked) {
+                sysStatusBox.innerText = "Esperando detección de objeto...";
+                sysStatusBox.style.backgroundColor = "#fff3cd";
+                sysStatusBox.style.color = "#856404";
+            }
+        }
+    </script>
+</body>
+</html>
